@@ -4,7 +4,12 @@ class PHPBot
 {
     private $api, $webhook_reply_used = false, $BOTID;
 
-    public function __construct($token)
+
+    /**
+     * PHPBot constructor.
+     * @param string $token The botAPI token provided by t.me/Botfather
+     */
+    public function __construct(string $token)
     {
         if(preg_match('/^(\d+):[\w-]{30,}$/', $token, $matches) === 0){
             throw new InvalidArgumentException('The supplied token does not look correct...');
@@ -135,22 +140,22 @@ class PHPBot
     }
 
     /**
-     * Promotes user with necessary permissions for our groups
-     * @param $user_id
-     * @param $chat_id
+     * Promotes user to full admin by default
+     * @param       $user_id
+     * @param       $chat_id
+     * @param array $perms
      * @return stdClass
      */
-    public function promote($user_id, $chat_id): stdClass
+    public function promote($user_id, $chat_id, array $perms = [
+        'can_change_info' => 1,
+        'can_delete_messages' => 1,
+        'can_invite_users' => 1,
+        'can_restrict_members' => 1,
+        'can_pin_messages' => 1,
+        'can_promote_members' => 1
+    ]): stdClass
     {
-        return $this->editadmin($user_id, $chat_id,
-            [
-                'can_delete_messages' => 1,
-                'can_invite_users' => 1,
-                'can_restrict_members' => 1,
-                'can_pin_messages' => 1,
-                'can_promote_members' => 1
-            ]
-        );
+        return $this->editadmin($user_id, $chat_id, $perms);
     }
 
     /**
@@ -162,14 +167,6 @@ class PHPBot
      */
     public function editadmin($user_id, $chat_id, array $perms = []): stdClass
     {
-        $perms = array_replace([ //overwrites defaults with values from $perms
-            'can_change_info' => 0,
-            'can_delete_messages' => 0,
-            'can_invite_users' => 0,
-            'can_restrict_members' => 0,
-            'can_pin_messages' => 0,
-            'can_promote_members' => 0
-        ], $perms);
         return $this->action(
             'promotechatmember',
             array_merge(
@@ -183,7 +180,7 @@ class PHPBot
     }
 
     /**
-     * Gives {delete, invite, pin} permissions to $user_id in $chat_id
+     * Gives {delete/pin messages, invite users} permissions to $user_id in $chat_id
      * @param $user_id
      * @param $chat_id
      * @return stdClass
@@ -208,28 +205,6 @@ class PHPBot
     public function demote($user_id, $chat_id): stdClass
     {
         return $this->editadmin($user_id, $chat_id); //no args means no perms
-    }
-
-    /**
-     * Bans $user_id from $chat_id
-     * @param $user_id
-     * @param $chat_id
-     * @return stdClass
-     */
-    public function ban($user_id, $chat_id): stdClass
-    {
-        return $this->action('kickchatmember', ['chat_id' => $chat_id, 'user_id' => $user_id]);
-    }
-
-    /**
-     * Unbans $user_id from $chat_id (does not add them back)
-     * @param $user_id
-     * @param $chat_id
-     * @return stdClass
-     */
-    public function unban($user_id, $chat_id): stdClass
-    {
-        return $this->action('unbanchatmember', ['chat_id' => $chat_id, 'user_id' => $user_id]);
     }
 
     /**
@@ -260,7 +235,7 @@ class PHPBot
                 'Content-Type:multipart/form-data'
             ]);
             curl_exec($ch);
-            unlink($info['photo']);
+            curl_close($ch);
         }
     }
 
@@ -310,9 +285,9 @@ class PHPBot
     }
 
     /**
-     * @return mixed
+     * @return int
      */
-    public function getBOTID()
+    public function getBOTID(): int
     {
         return $this->BOTID;
     }

@@ -19,7 +19,7 @@ PHP \>= 7.0
 
 ### Installing
 
-Download [PHPBot.php](https://raw.githubusercontent.com/Kyle2142/master/PHPBot.php) and place in your bot's folder
+Download [PHPBot.php](https://raw.githubusercontent.com/Kyle2142/PHPBot/master/PHPBot.php) and place in your bot's folder
 
 ## Usage
 
@@ -50,4 +50,3 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 * [Lonami](https://github.com/LonamiWebs) who inspired me to develop using Telegram
 * [Telegram](https://telegram.org) for the chat platform with an open API
-
