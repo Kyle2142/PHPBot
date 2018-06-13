@@ -262,15 +262,12 @@ class PHPBot
 class api{
     private $api_url, $BOTID, $curl;
 
-    public function __construct($token){
+    public function __construct(string $token){
         if(preg_match('/^(\d+):[\w-]{30,}$/', $token, $matches) === 0){
             throw new InvalidArgumentException('The supplied token does not look correct...');
         }
         $this->BOTID = $matches[0];
         $this->api_url = "https://api.telegram.org/bot$token/";
-        if(!$this->getMe()->ok){
-            throw new \AssertionError('The supplied token was rejected by Telegram');
-        }
 
         $this->curl = curl_init();
         curl_setopt($this->curl, CURLOPT_HTTPHEADER, ['Content-Type:multipart/form-data']);

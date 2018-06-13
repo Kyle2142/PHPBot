@@ -70,7 +70,7 @@ Check the examples and documentation of the PHPBot class for details
 ### Return values
 
 While calling any raw API method or convenience function, you will get a result in the form of an object:
-<details><summary>View `var_dump`</summary><p>
+<details><summary>View dump</summary><p>
     
 ```php
 php > var_dump($bot->editMessage(343859930, 172, "New text!"));
@@ -114,6 +114,7 @@ object(stdClass)#3 (2) {
 }
 ```
 </p></details>
+
 This means you can access return values as such:
 
 ```php
