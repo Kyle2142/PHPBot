@@ -33,14 +33,17 @@ echo print_r($bot->api->getMe(), true);
 ## Usage
 
 ### Receiving updates
+
 Firstly, I highly suggest you set up a webhook (requires SSL), so you can use this amazingly simple code to process updates:
+
 ```php
 $content = file_get_contents('php://input');
 $update = json_decode($content, true);
 //do stuff with $update
 ```
 
-###Calling methods
+### Calling methods
+
 This library contains some convenience functions, as well as access to the normal botAPI functions.
 
 For the most part, you can refer to Telegram's [BotAPI](https://core.telegram.org/bots/api) for method names and parameters.
@@ -56,12 +59,14 @@ $params = [511048646, 21, "New text!"];
 $bot->editMessage(...$params);
 ```
 Check the examples and documentation of the PHPBot class for details
-###Return values
-While calling any raw API method or convenience function, you will get a result in the form of an object:
-<details><summary>Check it out</summary><p>
 
+### Return values
+
+<details><summary>While calling any raw API method or convenience function, you will get a result in the form of an object:</summary><p>
+    
 ```php
-var_dump($bot->editMessage(343859930, 172, "New text!"));
+php > var_dump($bot->editMessage(343859930, 172, "New text!"));
+
 object(stdClass)#3 (2) {
   ["ok"]=>
   bool(true)
@@ -115,7 +120,7 @@ In the case of an error, you will receive the whole reply from Telegram:
 * error_code = `int`:   HTTP error code, like `400` or `404`
 * description = `string`:   Small description of the error
 
-##Have Questions?
+## Have Questions?
 Please do not open an issue for small questions etc, its there for *issues*
 
 * Telegram: [@Kyle_S](https://t.me/kyle_s) (preferred)
