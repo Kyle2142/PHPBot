@@ -1,7 +1,9 @@
 # PHPBot
 
 At some point I decided I wanted to make a Telegram bot.
-I saw the API and thought "*hey, I might as well make my own lib for this*"
+I saw the API and thought 
+> hey, I might as well make my own lib for this
+
 This lib doesn't have any groundbreaking features, but it allowed me to develop my own bots and be able to edit the underlying code as I needed.
 
 ## Getting Started
@@ -20,6 +22,7 @@ echo print_r($bot->api->getMe(), true);
 * cURL extension correctly installed and enabled
 
 ### Installing
+You may use any of the following:
 
 * composer.json:
 ```json
@@ -34,7 +37,7 @@ echo print_r($bot->api->getMe(), true);
 
 ### Receiving updates
 
-Firstly, I highly suggest you set up a webhook (requires SSL), so you can use this amazingly simple code to process updates:
+I highly suggest you set up a webhook (requires SSL), so you can use this amazingly simple code to process updates:
 
 ```php
 $content = file_get_contents('php://input');
@@ -47,22 +50,27 @@ $update = json_decode($content, true);
 This library contains some convenience functions, as well as access to the normal botAPI functions.
 
 For the most part, you can refer to Telegram's [BotAPI](https://core.telegram.org/bots/api) for method names and parameters.
+
 ```php
 $params = array('chat_id'=>511048636, 'from_chat_id'=>'@durov', 'message_id'=>79);
 $bot->api->forwardMessage($params); //direct api method
 
 $bot->editMessage(/*chat id*/ 511048646, /*msg id*/ 21, "New text!");
 ```
+
 If you really want to, you can use PHP's `...` operator with convenience functions to unpack arrays:
+
 ```php
 $params = [511048646, 21, "New text!"];
 $bot->editMessage(...$params);
 ```
+
 Check the examples and documentation of the PHPBot class for details
 
 ### Return values
 
-<details><summary>While calling any raw API method or convenience function, you will get a result in the form of an object:</summary><p>
+While calling any raw API method or convenience function, you will get a result in the form of an object:
+<details><summary>View `var_dump`</summary><p>
     
 ```php
 php > var_dump($bot->editMessage(343859930, 172, "New text!"));
