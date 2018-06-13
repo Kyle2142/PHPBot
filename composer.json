@@ -1,18 +1,19 @@
 {
     "name": "kyle2142/phpbot",
     "description": "A simple lib to use Telegram's BotAPI in PHP",
+    "type": "library",
+    "license": "MIT",
     "authors": [
         {
             "name": "Kyle",
             "email": "Kyle-2142@outlook.com"
         }
     ],
-    "config": {
-        "platform": {
-            "php": "7.0"
-        }
-    },
     "require": {
-        "php": ">=7.0"
+        "php": "^7.0",
+        "ext-curl": "*"
+    },
+    "autoload":{
+        "files": ["PHPBot.php"]
     }
 }

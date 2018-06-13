@@ -1,9 +1,12 @@
 <?php
 
+namespace kyle2142;
+use InvalidArgumentException, LogicException, stdClass, CURLFile;
+
 class PHPBot
 {
-    private $api, $webhook_reply_used = false, $BOTID;
-
+    private $webhook_reply_used = false, $BOTID;
+    public $api;
 
     /**
      * PHPBot constructor.
@@ -11,39 +14,7 @@ class PHPBot
      */
     public function __construct(string $token)
     {
-        if(preg_match('/^(\d+):[\w-]{30,}$/', $token, $matches) === 0){
-            throw new InvalidArgumentException('The supplied token does not look correct...');
-        }
-        $this->api = "https://api.telegram.org/bot$token/";
-        $this->BOTID = $matches[0];
-    }
-
-    /**
-     * Magic method to call botAPI methods that are not defined in this class
-     * @param string $method
-     * @param array  $args
-     * @return mixed
-     */
-    public function __call(string $method, array $args) : stdClass
-    {
-        return $this->action($method, $args[0]);
-    }
-
-    /**
-     * Template function to make API calls using method name and array of parameters
-     * @param string $method The method name from https://core.telegram.org/bots/api
-     * @param array  $params The arguments of the method, as an array
-     * @return stdClass
-     */
-    public function action(string $method, array $params): stdClass
-    {
-        $ch = curl_init($this->api . $method);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type:application/json']);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $result = curl_exec($ch); //not always needed, json encoded result from Telegram
-        curl_close($ch);
-        return json_decode($result);
+        $this->api = new api($token);
     }
 
     /**
@@ -52,7 +23,7 @@ class PHPBot
      * @param string $method The Telegram botAPI method to call
      * @param array  $params Array of parameters needed for the method
      */
-    public function quickaction($method, array $params = [])
+    public function quickAction($method, array $params = [])
     {
         if($this->webhook_reply_used){
             throw new LogicException('This function may only be called once per webhook call');
@@ -73,9 +44,9 @@ class PHPBot
      * @param array $extras
      * @return stdClass
      */
-    public function sendmessage($chat_id, $text, array $extras = []): stdClass
+    public function sendMessage($chat_id, $text, array $extras = []): stdClass
     {
-        return $this->action('sendmessage', array_merge(['chat_id' => $chat_id, 'text' => $text], $extras)); //merges necessary params with extras, if any, and calls template
+        return $this->api->sendMessage(array_merge(['chat_id' => $chat_id, 'text' => $text], $extras)); //merges necessary params with extras, if any, and calls template
     }
 
     /**
@@ -86,9 +57,9 @@ class PHPBot
      * @param array $extras see https://core.telegram.org/bots/api#editmessagetext
      * @return stdClass
      */
-    public function editmessagetext($chat_id, $msg_id, $text, array $extras = []): stdClass
+    public function editMessage($chat_id, $msg_id, $text, array $extras = []): stdClass
     {
-        return $this->action('editmessagetext', array_merge(['chat_id' => $chat_id, 'message_id' => $msg_id, 'text' => $text], $extras));
+        return $this->api->editMessageText(array_merge(['chat_id' => $chat_id, 'message_id' => $msg_id, 'text' => $text], $extras));
     }
 
     /**
@@ -98,9 +69,9 @@ class PHPBot
      * @param string $reply_markup The new reply_markup
      * @return stdClass
      */
-    public function editmarkup($chat_id, $msg_id, $reply_markup = ''): stdClass
+    public function editMarkup($chat_id, $msg_id, $reply_markup = ''): stdClass
     {
-        return $this->action('editmessagereplymarkup', ['chat_id' => $chat_id, 'message_id' => $msg_id, 'reply_markup' => $reply_markup]);
+        return $this->api->editMessageReplyMarkup(['chat_id' => $chat_id, 'message_id' => $msg_id, 'reply_markup' => $reply_markup]);
     }
 
     /**
@@ -108,9 +79,9 @@ class PHPBot
      * @param $chat_id
      * @return stdClass
      */
-    public function checkadminprivs($chat_id): stdClass
+    public function getAdminPrivs($chat_id): stdClass
     {
-        $result = $this->action('getchatmember', ['chat_id' => $chat_id, 'user_id' => $this->BOTID])->result;
+        $result = $this->api->getChatMember(['chat_id' => $chat_id, 'user_id' => $this->BOTID])->result;
         if($result->status !== 'administrator')
         {
             $perms = [
@@ -134,9 +105,9 @@ class PHPBot
      * @param $msg_id
      * @return stdClass
      */
-    public function deletemessage($chat_id, $msg_id): stdClass
+    public function deleteMessage($chat_id, $msg_id): stdClass
     {
-        return $this->action('deletemessage', ['chat_id' => $chat_id, 'message_id' => $msg_id]);
+        return $this->api->deleteMessage(['chat_id' => $chat_id, 'message_id' => $msg_id]);
     }
 
     /**
@@ -146,7 +117,7 @@ class PHPBot
      * @param array $perms
      * @return stdClass
      */
-    public function promote($user_id, $chat_id, array $perms = [
+    public function promoteUser($user_id, $chat_id, array $perms = [
         'can_change_info' => 1,
         'can_delete_messages' => 1,
         'can_invite_users' => 1,
@@ -155,7 +126,7 @@ class PHPBot
         'can_promote_members' => 1
     ]): stdClass
     {
-        return $this->editadmin($user_id, $chat_id, $perms);
+        return $this->editAdmin($user_id, $chat_id, $perms);
     }
 
     /**
@@ -165,10 +136,9 @@ class PHPBot
      * @param array $perms
      * @return stdClass
      */
-    public function editadmin($user_id, $chat_id, array $perms = []): stdClass
+    public function editAdmin($user_id, $chat_id, array $perms = []): stdClass
     {
-        return $this->action(
-            'promotechatmember',
+        return $this->api->promotechatmember(
             array_merge(
                 [
                     'user_id' => $user_id,
@@ -185,9 +155,9 @@ class PHPBot
      * @param $chat_id
      * @return stdClass
      */
-    public function mod($user_id, $chat_id): stdClass
+    public function makeModerator($user_id, $chat_id): stdClass
     {
-        return $this->editadmin($user_id, $chat_id,
+        return $this->editAdmin($user_id, $chat_id,
             [
                 'can_delete_messages' => 1,
                 'can_invite_users' => 1,
@@ -204,39 +174,35 @@ class PHPBot
      */
     public function demote($user_id, $chat_id): stdClass
     {
-        return $this->editadmin($user_id, $chat_id); //no args means no perms
+        return $this->editAdmin($user_id, $chat_id); //no args means no perms
     }
 
     /**
      * Edits info of group, using any info given
      * @param       $chat_id
      * @param array $info At least one of {title, description, photo path} must be in this array
+     * @return array
      */
-    public function editinfo($chat_id, array $info)
+    public function editInfo($chat_id, array $info): array
     {
-        if(count($info) < 1){
-            return;
+        if(\count($info) < 1){
+            return [NULL];
         }
+        $results = [];
         if(isset($info['title'])){
-            $this->action('setchattitle', ['chat_id' => $chat_id, 'title' => $info['title']]);
+            $results[] = $this->api->setChatTitle(['chat_id' => $chat_id, 'title' => $info['title']]);
         }
         if(isset($info['description'])){
-            $this->action('setchatdescription', ['chat_id' => $chat_id, 'description' => $info['description']]);
+            $results[] = $this->api->setChatDescription(['chat_id' => $chat_id, 'description' => $info['description']]);
         }
         if(isset($info['photo']) && file_exists($info['photo'])){
-            $post_fields = [
+            $data = [
                 'chat_id' => $chat_id,
                 'photo' => new CURLFile(realpath($info['photo']))
             ];
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $this->api . "setchatphoto?chat_id=$chat_id");
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type:multipart/form-data'
-            ]);
-            curl_exec($ch);
-            curl_close($ch);
+            $results[] = $this->api->setChatPhoto($data);
         }
+        return $results;
     }
 
     /**
@@ -287,7 +253,55 @@ class PHPBot
     /**
      * @return int
      */
-    public function getBOTID(): int
+    public function getBotID(): int
+    {
+        return $this->api->getBotID();
+    }
+}
+
+class api{
+    private $api_url, $BOTID, $curl;
+
+    public function __construct($token){
+        if(preg_match('/^(\d+):[\w-]{30,}$/', $token, $matches) === 0){
+            throw new InvalidArgumentException('The supplied token does not look correct...');
+        }
+        $this->BOTID = $matches[0];
+        $this->api_url = "https://api.telegram.org/bot$token/";
+        if(!$this->getMe()->ok){
+            throw new \AssertionError('The supplied token was rejected by Telegram');
+        }
+
+        $this->curl = curl_init();
+        curl_setopt($this->curl, CURLOPT_HTTPHEADER, ['Content-Type:multipart/form-data']);
+        curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
+    }
+
+    public function __destruct()
+    {
+        curl_close($this->curl);
+    }
+    
+    /**
+     * Template function to make API calls using method name and array of parameters
+     * @param string $method The method name from https://core.telegram.org/bots/api
+     * @param array  $params The arguments of the method, as an array
+     * @return stdClass
+     */
+    public function __call(string $method, array $params = [[]]): stdClass
+    {
+        curl_setopt($this->curl, CURLOPT_URL, $this->api_url . $method);
+        curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params[0]);
+        $result = curl_exec($this->curl); //not always needed, json encoded result from Telegram
+        $response = json_decode($result);
+        if($response->ok) return $response->result;
+        else return $response;
+    }
+
+    /**
+     * @return int
+     */
+    public function getBotID(): int
     {
         return $this->BOTID;
     }
