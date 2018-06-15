@@ -1,11 +1,12 @@
 <?php
 
 namespace kyle2142;
+
 use InvalidArgumentException, LogicException, stdClass, CURLFile;
 
 class PHPBot
 {
-    private $webhook_reply_used = false, $BOTID;
+    private $webhook_reply_used = false;
     public $api;
 
     /**
@@ -39,25 +40,25 @@ class PHPBot
 
     /**
      * Send $text to $chat_id with optional extras such as reply_markup, see https://core.telegram.org/bots/api#sendmessage
-     * @param       $chat_id
-     * @param       $text
-     * @param array $extras
+     * @param        $chat_id
+     * @param string $text
+     * @param array  $extras
      * @return stdClass
      */
-    public function sendMessage($chat_id, $text, array $extras = []): stdClass
+    public function sendMessage($chat_id, string $text, array $extras = []): stdClass
     {
         return $this->api->sendMessage(array_merge(['chat_id' => $chat_id, 'text' => $text], $extras)); //merges necessary params with extras, if any, and calls template
     }
 
     /**
      * Edits $msg_id from $chat_id to become $text, with optional $extras
-     * @param       $chat_id
-     * @param       $msg_id
-     * @param       $text
-     * @param array $extras see https://core.telegram.org/bots/api#editmessagetext
+     * @param        $chat_id
+     * @param int    $msg_id
+     * @param string $text
+     * @param array  $extras see https://core.telegram.org/bots/api#editmessagetext
      * @return stdClass
      */
-    public function editMessage($chat_id, $msg_id, $text, array $extras = []): stdClass
+    public function editMessageText($chat_id, int $msg_id, string $text, array $extras = []): stdClass
     {
         return $this->api->editMessageText(array_merge(['chat_id' => $chat_id, 'message_id' => $msg_id, 'text' => $text], $extras));
     }
@@ -65,26 +66,29 @@ class PHPBot
     /**
      * Edits only reply_markup of $msg_id from $chat_id
      * @param        $chat_id
-     * @param        $msg_id
-     * @param string $reply_markup The new reply_markup
+     * @param int    $msg_id
+     * @param        $reply_markup . The new reply_markup
      * @return stdClass
      */
-    public function editMarkup($chat_id, $msg_id, $reply_markup = ''): stdClass
+    public function editMarkup($chat_id, int $msg_id, $reply_markup = ''): stdClass
     {
         return $this->api->editMessageReplyMarkup(['chat_id' => $chat_id, 'message_id' => $msg_id, 'reply_markup' => $reply_markup]);
     }
 
     /**
-     * Checks what admin privileges the bot has inside $chat_id
+     * Checks what privileges the bot has inside $chat_id
      * @param $chat_id
      * @return stdClass
      */
-    public function getAdminPrivs($chat_id): stdClass
+    public function getPermissions($chat_id): stdClass
     {
-        $result = $this->api->getChatMember(['chat_id' => $chat_id, 'user_id' => $this->BOTID])->result;
-        if($result->status !== 'administrator')
-        {
-            $perms = [
+        $result = $this->api->getChatMember(['chat_id' => $chat_id, 'user_id' => $this->getBotID()]);
+        if(property_exists($result, 'error_code') && $result->error_code === 403){
+            //403 == forbidden: bot was kicked, left the group, or was never participant
+            $result->status = 'left';
+        }
+        if($result->status !== 'administrator'){
+            $admin_perms = [
                 'can_change_info',
                 'can_delete_messages',
                 'can_invite_users',
@@ -92,8 +96,20 @@ class PHPBot
                 'can_pin_messages',
                 'can_promote_members'
             ];
-            foreach($perms as $perm){
-                $result->$perm = 0;
+            foreach($admin_perms as $perm){
+                $result->$perm = false;
+            }
+        }
+        if($result->status !== 'restricted'){
+            $restricted_perms = [
+                'can_send_messages',
+                'can_send_media_messages',
+                'can_send_other_messages',
+                'can_add_web_page_previews'
+            ];
+            foreach($restricted_perms as $perm){
+                //true if the bot is admin, false if the bot isn't in the chat:
+                $result->$perm = ($result->status !== 'left');
             }
         }
         return $result;
@@ -101,23 +117,23 @@ class PHPBot
 
     /**
      * Deletes $msg_id from $chat_id
-     * @param $chat_id
-     * @param $msg_id
+     * @param     $chat_id
+     * @param int $msg_id
      * @return stdClass
      */
-    public function deleteMessage($chat_id, $msg_id): stdClass
+    public function deleteMessage($chat_id, int $msg_id): stdClass
     {
         return $this->api->deleteMessage(['chat_id' => $chat_id, 'message_id' => $msg_id]);
     }
 
     /**
      * Promotes user to full admin by default
-     * @param       $user_id
+     * @param int   $user_id
      * @param       $chat_id
      * @param array $perms
      * @return stdClass
      */
-    public function promoteUser($user_id, $chat_id, array $perms = [
+    public function promoteUser(int $user_id, $chat_id, array $perms = [
         'can_change_info' => 1,
         'can_delete_messages' => 1,
         'can_invite_users' => 1,
@@ -130,13 +146,28 @@ class PHPBot
     }
 
     /**
+     * Restricts user (forever) to be only able to read messages
+     * @param int $user_id
+     * @param     $chat_id
+     * @return stdClass
+     */
+    public function muteUser($user_id, $chat_id): stdClass
+    {
+        return $this->api->restrictChatMember([
+            'chat_id' => $chat_id,
+            'user_id' => $user_id,
+            'can_send_messages' => false
+        ]);
+    }
+
+    /**
      * Template function to edit/give $perms to $user_id in $chat_id
-     * @param       $user_id
+     * @param int   $user_id
      * @param       $chat_id
      * @param array $perms
      * @return stdClass
      */
-    public function editAdmin($user_id, $chat_id, array $perms = []): stdClass
+    public function editAdmin(int $user_id, $chat_id, array $perms = []): stdClass
     {
         return $this->api->promotechatmember(
             array_merge(
@@ -151,11 +182,11 @@ class PHPBot
 
     /**
      * Gives {delete/pin messages, invite users} permissions to $user_id in $chat_id
-     * @param $user_id
-     * @param $chat_id
+     * @param int $user_id
+     * @param     $chat_id
      * @return stdClass
      */
-    public function makeModerator($user_id, $chat_id): stdClass
+    public function makeModerator(int $user_id, $chat_id): stdClass
     {
         return $this->editAdmin($user_id, $chat_id,
             [
@@ -168,11 +199,11 @@ class PHPBot
 
     /**
      * Removes all admin permissions of $user_id in $chat_id
-     * @param $user_id
-     * @param $chat_id
+     * @param int $user_id
+     * @param     $chat_id
      * @return stdClass
      */
-    public function demote($user_id, $chat_id): stdClass
+    public function demote(int $user_id, $chat_id): stdClass
     {
         return $this->editAdmin($user_id, $chat_id); //no args means no perms
     }
@@ -186,7 +217,7 @@ class PHPBot
     public function editInfo($chat_id, array $info): array
     {
         if(\count($info) < 1){
-            return [NULL];
+            return [null];
         }
         $results = [];
         if(isset($info['title'])){
@@ -259,14 +290,16 @@ class PHPBot
     }
 }
 
-class api{
+class api
+{
     private $api_url, $BOTID, $curl;
 
-    public function __construct(string $token){
+    public function __construct(string $token)
+    {
         if(preg_match('/^(\d+):[\w-]{30,}$/', $token, $matches) === 0){
             throw new InvalidArgumentException('The supplied token does not look correct...');
         }
-        $this->BOTID = $matches[0];
+        $this->BOTID = (int)$matches[0];
         $this->api_url = "https://api.telegram.org/bot$token/";
 
         $this->curl = curl_init();
@@ -278,7 +311,7 @@ class api{
     {
         curl_close($this->curl);
     }
-    
+
     /**
      * Template function to make API calls using method name and array of parameters
      * @param string $method The method name from https://core.telegram.org/bots/api
