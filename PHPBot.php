@@ -67,10 +67,10 @@ class PHPBot
      * Edits only reply_markup of $msg_id from $chat_id
      * @param        $chat_id
      * @param int    $msg_id
-     * @param        $reply_markup . The new reply_markup
-     * @return stdClass
+     * @param array  $reply_markup The new reply_markup
+     * @return mixed
      */
-    public function editMarkup($chat_id, int $msg_id, $reply_markup = ''): stdClass
+    public function editMarkup($chat_id, int $msg_id, array $reply_markup = [])
     {
         return $this->api->editMessageReplyMarkup(['chat_id' => $chat_id, 'message_id' => $msg_id, 'reply_markup' => $reply_markup]);
     }
@@ -83,7 +83,7 @@ class PHPBot
     public function getPermissions($chat_id): stdClass
     {
         $result = $this->api->getChatMember(['chat_id' => $chat_id, 'user_id' => $this->getBotID()]);
-        if(property_exists($result, 'error_code') && $result->error_code === 403){
+        if(($result->error_code ?? 0) === 403){
             //403 == forbidden: bot was kicked, left the group, or was never participant
             $result->status = 'left';
         }
@@ -119,9 +119,9 @@ class PHPBot
      * Deletes $msg_id from $chat_id
      * @param     $chat_id
      * @param int $msg_id
-     * @return stdClass
+     * @return bool
      */
-    public function deleteMessage($chat_id, int $msg_id): stdClass
+    public function deleteMessage($chat_id, int $msg_id): bool
     {
         return $this->api->deleteMessage(['chat_id' => $chat_id, 'message_id' => $msg_id]);
     }
@@ -131,7 +131,7 @@ class PHPBot
      * @param int   $user_id
      * @param       $chat_id
      * @param array $perms
-     * @return stdClass
+     * @return bool
      */
     public function promoteUser(int $user_id, $chat_id, array $perms = [
         'can_change_info' => 1,
@@ -140,7 +140,7 @@ class PHPBot
         'can_restrict_members' => 1,
         'can_pin_messages' => 1,
         'can_promote_members' => 1
-    ]): stdClass
+    ]): bool
     {
         return $this->editAdmin($user_id, $chat_id, $perms);
     }
@@ -149,14 +149,16 @@ class PHPBot
      * Restricts user (forever) to be only able to read messages
      * @param int $user_id
      * @param     $chat_id
-     * @return stdClass
+     * @param int $until
+     * @return bool
      */
-    public function muteUser($user_id, $chat_id): stdClass
+    public function muteUser(int $user_id, $chat_id, int $until = 0): bool
     {
         return $this->api->restrictChatMember([
             'chat_id' => $chat_id,
             'user_id' => $user_id,
-            'can_send_messages' => false
+            'can_send_messages' => false,
+            'until_date' => $until
         ]);
     }
 
@@ -165,9 +167,9 @@ class PHPBot
      * @param int   $user_id
      * @param       $chat_id
      * @param array $perms
-     * @return stdClass
+     * @return bool
      */
-    public function editAdmin(int $user_id, $chat_id, array $perms = []): stdClass
+    public function editAdmin(int $user_id, $chat_id, array $perms = []): bool
     {
         return $this->api->promotechatmember(
             array_merge(
@@ -184,9 +186,9 @@ class PHPBot
      * Gives {delete/pin messages, invite users} permissions to $user_id in $chat_id
      * @param int $user_id
      * @param     $chat_id
-     * @return stdClass
+     * @return bool
      */
-    public function makeModerator(int $user_id, $chat_id): stdClass
+    public function makeModerator(int $user_id, $chat_id): bool
     {
         return $this->editAdmin($user_id, $chat_id,
             [
@@ -201,9 +203,9 @@ class PHPBot
      * Removes all admin permissions of $user_id in $chat_id
      * @param int $user_id
      * @param     $chat_id
-     * @return stdClass
+     * @return bool
      */
-    public function demote(int $user_id, $chat_id): stdClass
+    public function demote(int $user_id, $chat_id): bool
     {
         return $this->editAdmin($user_id, $chat_id); //no args means no perms
     }
