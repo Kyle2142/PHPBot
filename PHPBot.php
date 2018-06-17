@@ -316,9 +316,9 @@ class api
      * Template function to make API calls using method name and array of parameters
      * @param string $method The method name from https://core.telegram.org/bots/api
      * @param array  $params The arguments of the method, as an array
-     * @return stdClass
+     * @return stdClass/bool
      */
-    public function __call(string $method, array $params = [[]]): stdClass
+    public function __call(string $method, array $params = [[]])
     {
         curl_setopt($this->curl, CURLOPT_URL, $this->api_url . $method);
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params[0]);
