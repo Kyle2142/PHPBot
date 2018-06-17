@@ -31,7 +31,7 @@ You may use any of the following:
 require __DIR__.'PHPBot.php';`
 ```
 * composer.json:
-```json
+```
 "require": {
     "kyle2142/phpbot": "dev-master"
 }
@@ -40,7 +40,7 @@ require __DIR__.'PHPBot.php';`
   
 with both of the composer methods, add this to your main file:
 ```php
-require __DIR__.'vendor/autoload.php';
+require __DIR__.'/vendor/autoload.php';
 ```
 
 ## Usage
@@ -149,9 +149,12 @@ Please do not open an issue for small questions etc, its there for *issues*
 
 If you want to contribute, please make sure you follow the current style and the changes do not break anything!
 
+### Tests
+To run tests, you need to edit `tests/config.php` with valid values
+
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 ## Acknowledgments <3
 
