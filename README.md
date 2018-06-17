@@ -6,6 +6,8 @@ I saw the API and thought
 
 This lib doesn't have any groundbreaking features, but it allowed me to develop my own bots and be able to edit the underlying code as I needed.
 
+**Please read the wiki!**
+
 ## Getting Started
 
 ```php
@@ -24,14 +26,22 @@ echo print_r($bot->api->getMe(), true);
 ### Installing
 You may use any of the following:
 
+* Download [PHPBot.php](https://raw.githubusercontent.com/Kyle2142/PHPBot/master/PHPBot.php) and 
+```php
+require __DIR__.'PHPBot.php';`
+```
 * composer.json:
 ```json
 "require": {
-    "kyle2142/PHPBot"
+    "kyle2142/phpbot": "dev-master"
 }
 ```
-* `composer require kyle2142/PHPBot`
-* Download [PHPBot.php](https://raw.githubusercontent.com/Kyle2142/PHPBot/master/PHPBot.php) and `require` it
+* CLI: `composer require kyle2142/phpbot=dev-master`
+  
+with both of the composer methods, add this to your main file:
+```php
+require __DIR__.'vendor/autoload.php';
+```
 
 ## Usage
 
@@ -69,7 +79,7 @@ Check the examples and documentation of the PHPBot class for details
 
 ### Return values
 
-While calling any raw API method or convenience function, you will get a result in the form of an object:
+While calling any raw API method or convenience function, you will most often get a result in the form of an object:
 <details><summary>View dump</summary><p>
     
 ```php
