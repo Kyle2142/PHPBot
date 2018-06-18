@@ -24,7 +24,7 @@ final class botTest extends TestCase
 
     public function testGetChat()
     {
-        $result = $this->bot->api->getChat(['chat_id' => config::OWNER['id']]);
+        $result = $this->bot->api->getChat(['chat_id' => config::OWNER['id']])->result;
 
         $this->assertAttributeEquals(config::OWNER['id'], 'id', $result);
         $this->assertAttributeEquals(config::OWNER['first_name'], 'first_name', $result);
@@ -40,13 +40,13 @@ final class botTest extends TestCase
     {
         $text = 'test'; $edited = 'beep';
 
-        $msg = $this->bot->sendMessage(config::OWNER['id'], $text);
+        $msg = $this->bot->sendMessage(config::OWNER['id'], $text)->result;
         $this->assertAttributeEquals($text, 'text', $msg);
 
-        $edited_msg = $this->bot->editMessageText($msg->chat->id, $msg->message_id, $edited);
+        $edited_msg = $this->bot->editMessageText($msg->chat->id, $msg->message_id, $edited)->result;
         $this->assertAttributeEquals($edited, 'text', $edited_msg);
 
-        $deleted = $this->bot->deleteMessage($edited_msg->chat->id, $edited_msg->message_id);
+        $deleted = $this->bot->deleteMessage($edited_msg->chat->id, $edited_msg->message_id)->result;
         $this->assertTrue($deleted);
     }
 

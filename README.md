@@ -13,9 +13,9 @@ This lib doesn't have any groundbreaking features, but it allowed me to develop 
 ```php
 require 'PHPBot.php';
 $bot = new kyle2142\PHPBot('12345678:ABCDEF123456890abcdef'); //replace with your token
+print_r($bot->api->getMe()); //dump bot info
 $me = 98765432; //replace with your ID
 $bot->sendMessage($me, "Hello World!");
-echo print_r($bot->api->getMe(), true);
 ```
 
 ### Prerequisites
@@ -28,7 +28,7 @@ You may use any of the following:
 
 * Download [PHPBot.php](https://raw.githubusercontent.com/Kyle2142/PHPBot/master/PHPBot.php) and 
 ```php
-require __DIR__.'PHPBot.php';`
+require __DIR__.'/PHPBot.php';`
 ```
 * composer.json:
 ```
@@ -53,6 +53,12 @@ I highly suggest you set up a webhook (requires SSL), so you can use this amazin
 $content = file_get_contents('php://input');
 $update = json_decode($content, true);
 //do stuff with $update
+if(isset($update['message']['text']) and $update['message']['text'] === "Hello!"){
+    $msg_id = $update['message']['message_id'];
+    $chat_id = $update['message']['chat']['id'];
+    $name = $update['message']['from']['first_name'];
+    $bot->sendMessage($chat_id, "Hello $
+}
 ```
 
 ### Calling methods
@@ -79,7 +85,7 @@ Check the examples and documentation of the PHPBot class for details
 
 ### Return values
 
-While calling any raw API method or convenience function, you will most often get a result in the form of an object:
+While calling any raw API method or convenience function, you will get a result in the form of an object:
 <details><summary>View dump</summary><p>
     
 ```php
@@ -87,8 +93,8 @@ php > var_dump($bot->editMessage(343859930, 172, "New text!"));
 
 object(stdClass)#3 (2) {
   ["ok"]=>
-  bool(true)
-  ["result"]=>
+  bool(true) //the request succeeded
+  ["result"]=> //main results from Telegram. Either stdClass or bool
   object(stdClass)#4 (6) {
     ["message_id"]=>
     int(172)
@@ -128,16 +134,16 @@ object(stdClass)#3 (2) {
 This means you can access return values as such:
 
 ```php
-$result = $bot->sendmessage('@mychannel', "New stuff at example.com!");
+$result = $bot->sendmessage('@mychannel', "New stuff at example.com!")->result;
 
 $params = ['chat_id'=>343859930, 'from_chat_id' => $result->chat->id, 'message_id' => $result->message_id];
 $bot->api->forwardMessage($params); //put params as variable due to line length
 ```
 
-In the case of an error, you will receive the whole reply from Telegram:
-* ok = `bool`:  Always `false`
+In the case of an error, you will receive the details below instead of a `result`:
+* ok = `bool`:  Always `false` in case of error
 * error_code = `int`:   HTTP error code, like `400` or `404`
-* description = `string`:   Small description of the error
+* description = `string`:   Small description of the error, often useful
 
 ## Have Questions?
 Please do not open an issue for small questions etc, its there for *issues*
@@ -149,8 +155,12 @@ Please do not open an issue for small questions etc, its there for *issues*
 
 If you want to contribute, please make sure you follow the current style and the changes do not break anything!
 
-### Tests
-To run tests, you need to edit `tests/config.php` with valid values
+## Tests
+To run tests, you need to rename/copy `tests/example-config.php` to `tests/config.php` and update the values.
+
+**Make sure to have the correct testing environment!**
+
+ E.g.`GROUP_WITH_ADMIN` needs to be the ID of a group where the bot is an admin, or skip the tests that require them.
 
 ## License
 
