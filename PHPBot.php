@@ -23,6 +23,7 @@ class PHPBot
      * which is faster than using action() but can only be used once per webhook call, and cannot retrieve result
      * @param string $method The Telegram botAPI method to call
      * @param array  $params Array of parameters needed for the method
+     * @throws LogicException Thrown when called more than once per instantiation
      */
     public function quickAction($method, array $params = [])
     {
@@ -42,12 +43,13 @@ class PHPBot
      * Send $text to $chat_id with optional extras such as reply_markup, see https://core.telegram.org/bots/api#sendmessage
      * @param        $chat_id
      * @param string $text
-     * @param array  $extras
+     * @param array  $extras Markdown is enabled by default
      * @return stdClass
      */
     public function sendMessage($chat_id, string $text, array $extras = []): stdClass
     {
-        return $this->api->sendMessage(array_merge(['chat_id' => $chat_id, 'text' => $text], $extras)); //merges necessary params with extras, if any, and calls template
+        //merges defaults with given params, if any
+        return $this->api->sendMessage(array_merge(['chat_id' => $chat_id, 'text' => $text], array_merge(['parse_mode'=>'markdown'], $extras)));
     }
 
     /**
@@ -119,9 +121,9 @@ class PHPBot
      * Deletes $msg_id from $chat_id
      * @param     $chat_id
      * @param int $msg_id
-     * @return bool
+     * @return stdClass
      */
-    public function deleteMessage($chat_id, int $msg_id): bool
+    public function deleteMessage($chat_id, int $msg_id): stdClass
     {
         return $this->api->deleteMessage(['chat_id' => $chat_id, 'message_id' => $msg_id]);
     }
@@ -131,7 +133,7 @@ class PHPBot
      * @param int   $user_id
      * @param       $chat_id
      * @param array $perms
-     * @return bool
+     * @return stdClass
      */
     public function promoteUser(int $user_id, $chat_id, array $perms = [
         'can_change_info' => 1,
@@ -140,7 +142,7 @@ class PHPBot
         'can_restrict_members' => 1,
         'can_pin_messages' => 1,
         'can_promote_members' => 1
-    ]): bool
+    ]): stdClass
     {
         return $this->editAdmin($user_id, $chat_id, $perms);
     }
@@ -150,9 +152,9 @@ class PHPBot
      * @param int $user_id
      * @param     $chat_id
      * @param int $until
-     * @return bool
+     * @return stdClass
      */
-    public function muteUser(int $user_id, $chat_id, int $until = 0): bool
+    public function muteUser(int $user_id, $chat_id, int $until = 0): stdClass
     {
         return $this->api->restrictChatMember([
             'chat_id' => $chat_id,
@@ -167,9 +169,9 @@ class PHPBot
      * @param int   $user_id
      * @param       $chat_id
      * @param array $perms
-     * @return bool
+     * @return stdClass
      */
-    public function editAdmin(int $user_id, $chat_id, array $perms = []): bool
+    public function editAdmin(int $user_id, $chat_id, array $perms = []): stdClass
     {
         return $this->api->promotechatmember(
             array_merge(
@@ -186,9 +188,9 @@ class PHPBot
      * Gives {delete/pin messages, invite users} permissions to $user_id in $chat_id
      * @param int $user_id
      * @param     $chat_id
-     * @return bool
+     * @return stdClass
      */
-    public function makeModerator(int $user_id, $chat_id): bool
+    public function makeModerator(int $user_id, $chat_id): stdClass
     {
         return $this->editAdmin($user_id, $chat_id,
             [
@@ -203,9 +205,9 @@ class PHPBot
      * Removes all admin permissions of $user_id in $chat_id
      * @param int $user_id
      * @param     $chat_id
-     * @return bool
+     * @return stdClass
      */
-    public function demote(int $user_id, $chat_id): bool
+    public function demote(int $user_id, $chat_id): stdClass
     {
         return $this->editAdmin($user_id, $chat_id); //no args means no perms
     }
@@ -292,6 +294,11 @@ class PHPBot
     }
 }
 
+/**
+ * Handles contacting Telegram on PHPBot's behalf
+ * Class api
+ * @package kyle2142
+ */
 class api
 {
     private $api_url, $BOTID, $curl;
@@ -318,16 +325,14 @@ class api
      * Template function to make API calls using method name and array of parameters
      * @param string $method The method name from https://core.telegram.org/bots/api
      * @param array  $params The arguments of the method, as an array
-     * @return stdClass/bool
+     * @return stdClass
      */
-    public function __call(string $method, array $params = [[]])
+    public function __call(string $method, array $params): stdClass
     {
         curl_setopt($this->curl, CURLOPT_URL, $this->api_url . $method);
-        curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params[0]);
+        curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params[0] ?? []);
         $result = curl_exec($this->curl); //not always needed, json encoded result from Telegram
-        $response = json_decode($result);
-        if($response->ok) return $response->result;
-        else return $response;
+        return json_decode($result);
     }
 
     /**
