@@ -2,8 +2,15 @@
 
 namespace kyle2142;
 
-use InvalidArgumentException, LogicException, stdClass, CURLFile;
+use InvalidArgumentException, LogicException, Exception,
+    stdClass, CURLFile;
+use RuntimeException;
 
+/**
+ *
+ * Class PHPBot
+ * @package kyle2142
+ */
 class PHPBot
 {
     private $webhook_reply_used = false;
@@ -49,7 +56,7 @@ class PHPBot
     public function sendMessage($chat_id, string $text, array $extras = []): stdClass
     {
         //merges defaults with given params, if any
-        return $this->api->sendMessage(array_merge(['chat_id' => $chat_id, 'text' => $text], array_merge(['parse_mode'=>'markdown'], $extras)));
+        return $this->api->sendMessage(array_merge(['chat_id' => $chat_id, 'text' => $text], array_merge(['parse_mode' => 'markdown'], $extras)));
     }
 
     /**
@@ -58,9 +65,9 @@ class PHPBot
      * @param int    $msg_id
      * @param string $text
      * @param array  $extras see https://core.telegram.org/bots/api#editmessagetext
-     * @return stdClass
+     * @return stdClass|bool
      */
-    public function editMessageText($chat_id, int $msg_id, string $text, array $extras = []): stdClass
+    public function editMessageText($chat_id, int $msg_id, string $text, array $extras = [])
     {
         return $this->api->editMessageText(array_merge(['chat_id' => $chat_id, 'message_id' => $msg_id, 'text' => $text], $extras));
     }
@@ -76,92 +83,15 @@ class PHPBot
     {
         return $this->api->editMessageReplyMarkup(['chat_id' => $chat_id, 'message_id' => $msg_id, 'reply_markup' => $reply_markup]);
     }
-
-    /**
-     * Checks what privileges the bot has inside $chat_id
-     * @param $chat_id
-     * @return stdClass
-     */
-    public function getPermissions($chat_id): stdClass
-    {
-        $result = $this->api->getChatMember(['chat_id' => $chat_id, 'user_id' => $this->getBotID()]);
-        if(($result->error_code ?? 0) === 403){
-            //403 == forbidden: bot was kicked, left the group, or was never participant
-            $result->status = 'left';
-        }
-        if($result->status !== 'administrator'){
-            $admin_perms = [
-                'can_change_info',
-                'can_delete_messages',
-                'can_invite_users',
-                'can_restrict_members',
-                'can_pin_messages',
-                'can_promote_members'
-            ];
-            foreach($admin_perms as $perm){
-                $result->$perm = false;
-            }
-        }
-        if($result->status !== 'restricted'){
-            $restricted_perms = [
-                'can_send_messages',
-                'can_send_media_messages',
-                'can_send_other_messages',
-                'can_add_web_page_previews'
-            ];
-            foreach($restricted_perms as $perm){
-                //true if the bot is admin, false if the bot isn't in the chat:
-                $result->$perm = ($result->status !== 'left');
-            }
-        }
-        return $result;
-    }
-
     /**
      * Deletes $msg_id from $chat_id
      * @param     $chat_id
      * @param int $msg_id
-     * @return stdClass
+     * @return bool
      */
-    public function deleteMessage($chat_id, int $msg_id): stdClass
+    public function deleteMessage($chat_id, int $msg_id): bool
     {
         return $this->api->deleteMessage(['chat_id' => $chat_id, 'message_id' => $msg_id]);
-    }
-
-    /**
-     * Promotes user to full admin by default
-     * @param int   $user_id
-     * @param       $chat_id
-     * @param array $perms
-     * @return stdClass
-     */
-    public function promoteUser(int $user_id, $chat_id, array $perms = [
-        'can_change_info' => 1,
-        'can_delete_messages' => 1,
-        'can_invite_users' => 1,
-        'can_restrict_members' => 1,
-        'can_pin_messages' => 1,
-        'can_promote_members' => 1
-    ]): stdClass
-    {
-        return $this->editAdmin($user_id, $chat_id, $perms);
-    }
-
-    /**
-     * Restricts user (forever) to be only able to read messages
-     * @param int $user_id
-     * @param     $chat_id
-     * @param int $until
-     * @return stdClass
-     */
-    public function muteUser(int $user_id, $chat_id, int $until = 0): stdClass
-    {
-        return $this->api->restrictChatMember([
-            'chat_id' => $chat_id,
-            'user_id' => $user_id,
-            'can_send_messages' => false,
-            'until_date' => $until
-        ]);
     }
 
     /**
@@ -169,9 +99,9 @@ class PHPBot
      * @param int   $user_id
      * @param       $chat_id
      * @param array $perms
-     * @return stdClass
+     * @return bool
      */
-    public function editAdmin(int $user_id, $chat_id, array $perms = []): stdClass
+    public function editAdmin(int $user_id, $chat_id, array $perms = []): bool
     {
         return $this->api->promotechatmember(
             array_merge(
@@ -185,12 +115,50 @@ class PHPBot
     }
 
     /**
+     * Promotes user to full admin by default
+     * @param int   $user_id
+     * @param       $chat_id
+     * @param array $perms
+     * @return bool
+     */
+    public function promoteUser(int $user_id, $chat_id, array $perms = []): bool
+    {
+        if($perms === []){
+            $perms = [
+                'can_change_info' => 1,
+                'can_delete_messages' => 1,
+                'can_invite_users' => 1,
+                'can_restrict_members' => 1,
+                'can_pin_messages' => 1,
+                'can_promote_members' => 1
+            ];
+        }
+        return $this->editAdmin($user_id, $chat_id, $perms);
+    }
+
+    /**
+     * Restricts user (forever) to be only able to read messages
+     * @param int $user_id
+     * @param     $chat_id
+     * @param int $until
+     * @return bool
+     */
+    public function muteUser(int $user_id, $chat_id, int $until = 0): bool
+    {
+        return $this->api->restrictChatMember([
+            'chat_id' => $chat_id,
+            'user_id' => $user_id,
+            'can_send_messages' => false,
+            'until_date' => $until
+        ]);
+    }
+    /**
      * Gives {delete/pin messages, invite users} permissions to $user_id in $chat_id
      * @param int $user_id
      * @param     $chat_id
-     * @return stdClass
+     * @return bool
      */
-    public function makeModerator(int $user_id, $chat_id): stdClass
+    public function makeModerator(int $user_id, $chat_id): bool
     {
         return $this->editAdmin($user_id, $chat_id,
             [
@@ -205,11 +173,64 @@ class PHPBot
      * Removes all admin permissions of $user_id in $chat_id
      * @param int $user_id
      * @param     $chat_id
-     * @return stdClass
+     * @return bool
      */
-    public function demote(int $user_id, $chat_id): stdClass
+    public function demote(int $user_id, $chat_id): bool
     {
         return $this->editAdmin($user_id, $chat_id); //no args means no perms
+    }
+
+    //begin totally custom methods
+
+    /**
+     * Checks what privileges the bot has inside $chat_id
+     * @param $chat_id
+     * @return stdClass
+     */
+    public function getPermissions($chat_id): stdClass
+    {
+        try{
+            $api_reply = $this->api->getChatMember(['chat_id' => $chat_id, 'user_id' => $this->getBotID()]);
+        }catch(TelegramException $e){
+            $api_reply = new stdClass();
+            $api_reply->error_code = $e->getCode();
+        }
+        if(property_exists($api_reply, 'error_code')){
+            switch($api_reply->error_code){
+                case 403: //forbidden
+                    $api_reply->status = 'banned';
+                    break;
+                case 400: //chat not found
+                    $api_reply->status = 'invalid';
+                    break;
+            }
+        }
+        if($api_reply->status !== 'administrator'){
+            $admin_perms = [
+                'can_change_info',
+                'can_delete_messages',
+                'can_invite_users',
+                'can_restrict_members',
+                'can_pin_messages',
+                'can_promote_members'
+            ];
+            foreach($admin_perms as $perm){
+                $api_reply->$perm = false;
+            }
+        }
+        if($api_reply->status !== 'restricted'){
+            $restricted_perms = [
+                'can_send_messages',
+                'can_send_media_messages',
+                'can_send_other_messages',
+                'can_add_web_page_previews'
+            ];
+            $in_group = !\in_array($api_reply->status, ['left', 'banned', 'invalid']); //false if the bot isn't in the chat
+            foreach($restricted_perms as $perm){
+                $api_reply->$perm = $in_group;
+            }
+        }
+        return $api_reply;
     }
 
     /**
@@ -325,14 +346,22 @@ class api
      * Template function to make API calls using method name and array of parameters
      * @param string $method The method name from https://core.telegram.org/bots/api
      * @param array  $params The arguments of the method, as an array
-     * @return stdClass
+     * @return stdClass|bool
+     * @throws TelegramException, RuntimeException
      */
-    public function __call(string $method, array $params): stdClass
+    public function __call(string $method, array $params)
     {
-        curl_setopt($this->curl, CURLOPT_URL, $this->api_url . $method);
+        curl_setopt($this->curl, CURLOPT_URL, $this->api_url.$method);
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params[0] ?? []);
-        $result = curl_exec($this->curl); //not always needed, json encoded result from Telegram
-        return json_decode($result);
+        $result = curl_exec($this->curl);
+        if(curl_errno($this->curl)){
+            throw new RuntimeException(curl_error($this->curl), curl_errno($this->curl));
+        }
+        $object = json_decode($result);
+        if(!$object->ok){
+            throw new TelegramException($object->description, $object->error_code);
+        }
+        return $object->result;
     }
 
     /**
@@ -341,5 +370,13 @@ class api
     public function getBotID(): int
     {
         return $this->BOTID;
+    }
+}
+
+class TelegramException extends Exception
+{
+    public function __toString()
+    {
+        return "TelegramException: {$this->code} ({$this->message})\nTrace:\n{$this->getTraceAsString()}";
     }
 }

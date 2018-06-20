@@ -52,12 +52,12 @@ I highly suggest you set up a webhook (requires SSL), so you can use this amazin
 ```php
 $content = file_get_contents('php://input');
 $update = json_decode($content, true);
-//do stuff with $update
+//do stuff with $update:
 if(isset($update['message']['text']) and $update['message']['text'] === "Hello!"){
     $msg_id = $update['message']['message_id'];
     $chat_id = $update['message']['chat']['id'];
     $name = $update['message']['from']['first_name'];
-    $bot->sendMessage($chat_id, "Hello $
+    $bot->sendMessage($chat_id, "Hello $name!", ['reply_to_message_id'=>$msg_id]);
 }
 ```
 
@@ -85,68 +85,89 @@ Check the examples and documentation of the PHPBot class for details
 
 ### Return values
 
-While calling any raw API method or convenience function, you will get a result in the form of an object:
+#### Success
+
+While calling any raw API method or convenience function, you will get a result in the form of an object or a boolean:
 <details><summary>View dump</summary><p>
     
 ```php
 php > var_dump($bot->editMessage(343859930, 172, "New text!"));
 
-object(stdClass)#3 (2) {
-  ["ok"]=>
-  bool(true) //the request succeeded
-  ["result"]=> //main results from Telegram. Either stdClass or bool
-  object(stdClass)#4 (6) {
-    ["message_id"]=>
-    int(172)
-    ["from"]=>
-    object(stdClass)#5 (4) {
-      ["id"]=>
-      int(511048636)
-      ["is_bot"]=>
-      bool(true)
-      ["first_name"]=>
-      string(15) "Kyle's test bot"
-      ["username"]=>
-      string(14) "kyle_s_testbot"
-    }
-    ["chat"]=>
-    object(stdClass)#6 (4) {
-      ["id"]=>
-      int(343859930)
-      ["first_name"]=>
-      string(4) "Kyle"
-      ["username"]=>
-      string(6) "Kyle_S"
-      ["type"]=>
-      string(7) "private"
-    }
-    ["date"]=>
-    int(1528881693)
-    ["edit_date"]=>
-    int(1528881742)
-    ["text"]=>
-    string(9) "New text!"
+object(stdClass)#4 (6) {
+  ["message_id"]=>
+  int(172)
+  ["from"]=>
+  object(stdClass)#5 (4) {
+    ["id"]=>
+    int(511048636)
+    ["is_bot"]=>
+    bool(true)
+    ["first_name"]=>
+    string(15) "Kyle's test bot"
+    ["username"]=>
+    string(14) "kyle_s_testbot"
   }
+  ["chat"]=>
+  object(stdClass)#6 (4) {
+    ["id"]=>
+    int(343859930)
+    ["first_name"]=>
+    string(4) "Kyle"
+    ["username"]=>
+    string(6) "Kyle_S"
+    ["type"]=>
+    string(7) "private"
+  }
+  ["date"]=>
+  int(1528881693)
+  ["edit_date"]=>
+  int(1528881742)
+  ["text"]=>
+  string(9) "New text!"
 }
+
+php > var_dump($bot->deleteMessage(343859930, 172));
+
+bool(true)
 ```
 </p></details>
 
 This means you can access return values as such:
 
 ```php
-$result = $bot->sendmessage('@mychannel', "New stuff at example.com!")->result;
+$result = $bot->sendmessage('@mychannel', "New stuff at example.com!");
 
 $params = ['chat_id'=>343859930, 'from_chat_id' => $result->chat->id, 'message_id' => $result->message_id];
 $bot->api->forwardMessage($params); //put params as variable due to line length
 ```
+#### Error
+In the case of an error, `kyle2142\TelegramException` will be thrown.
 
-In the case of an error, you will receive the details below instead of a `result`:
-* ok = `bool`:  Always `false` in case of error
-* error_code = `int`:   HTTP error code, like `400` or `404`
-* description = `string`:   Small description of the error, often useful
+As an example, let us try delete a message that does not exist:
+
+(Note that we already deleted message 172 [here](#return-values), so trying to delete it again will throw an error)
+```php
+php > var_dump($bot->deleteMessage(343859930, 172));
+
+PHP Warning:  Uncaught TelegramException: 400 (Bad Request: message to delete not found)
+Trace:
+//trace omitted
+```
+When you catch the error, you can get the error code and description (returned by Telegram) as such:
+```php
+try{
+    $bot->deleteMessage(343859930, 172);
+}catch(\kyle2142\TelegramExeption $exception){
+    echo "Error code was {$exception->getCode()}\n
+    Telegram says '{$exception->getMessage()}' ";
+}
+
+Error code was 400
+Telegram says 'Bad Request: message to delete not found'
+```
 
 ## Have Questions?
-Please do not open an issue for small questions etc, its there for *issues*
+Please do not open an issue for small questions etc, it's there for *issues*
 
 * Telegram: [@Kyle_S](https://t.me/kyle_s) (preferred)
 * [Email](mailto:kyle-2142@outlook.com) (not preferred)
