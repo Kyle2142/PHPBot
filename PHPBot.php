@@ -324,27 +324,21 @@ class PHPBot
     }
 
     /**
-     * Takes a list of entities and restores markdown in botAPI format
+     * Takes a list of entities and restores markdown in $msg using botAPI format.
+     * Does NOT handle links!
+     *
      * Example usage: get message, pass to this function and get back original message before sending,
      * so it can be resent.
+     *
      * @param string $msg
      * @param array  $entities
      * @return string
      */
     public function createMarkdownFromEntities(string $msg, array $entities): string
     {
-        usort($entities, function ($a, $b) {
-            if($a['offset'] < $b['offset']){
-                return 1;
-            }
-            if($a['offset'] > $b['offset']){
-                return -1;
-            }
-            return 0; //equal
-        }); //sorts entities by their offset, descending
-
-        foreach($entities as $e){ //entities may not overlap, so this will not edit the same part of a message twice
-            switch($e['type']){
+        $inserted_chars = 0;
+        foreach ($entities as $e) { //entities may not overlap, so this will not edit the same part of a message twice
+            switch ($e->type) {
                 case 'bold':
                     $char = '*';
                     break;
@@ -359,10 +353,12 @@ class PHPBot
                     break;
                 default:
                     $char = '';
-            } //sets $char based on entity tyep
-            if($char !== ''){
-                $msg = substr_replace($msg, $char, $e['offset'], 0); //0 means "insert". Insert char at offset
-                $msg = substr_replace($msg, $char, $e['offset'] + $e['length'] + 1, 0);
+            } //sets $char based on entity
+            if ($char !== '') {
+                $msg = substr_replace($msg, $char, $inserted_chars + $e->offset, 0); //0 means "insert". Insert char at offset
+                $inserted_chars += \strlen($char);
+                $msg = substr_replace($msg, $char, $inserted_chars + $e->offset + $e->length, 0);
+                $inserted_chars += \strlen($char);
             }
         }
         return $msg;
