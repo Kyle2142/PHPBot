@@ -7,34 +7,37 @@ use InvalidArgumentException, LogicException, Exception,
 use RuntimeException;
 
 /**
- *
  * Class PHPBot
+ *
  * @package kyle2142
  */
 class PHPBot
 {
-    private $webhook_reply_used = false;
-    public $api;
+    private $webhook_reply_used = false, $token;
+    public $api, $parse_mode = 'markdown';
 
     /**
      * PHPBot constructor.
+     *
      * @param string $token The botAPI token provided by t.me/Botfather
      */
     public function __construct(string $token)
     {
+        $this->token = $token;
         $this->api = new api($token);
     }
 
     /**
      * Executes a botAPI method as response to the webhook
      * which is faster than using action() but can only be used once per webhook call, and cannot retrieve result
+     *
      * @param string $method The Telegram botAPI method to call
      * @param array  $params Array of parameters needed for the method
      * @throws LogicException Thrown when called more than once per instantiation
      */
     public function quickAction($method, array $params = [])
     {
-        if($this->webhook_reply_used){
+        if ($this->webhook_reply_used) {
             throw new LogicException('This function may only be called once per webhook call');
         }
         header_remove();
@@ -46,8 +49,56 @@ class PHPBot
         $this->webhook_reply_used = true;
     }
 
+    /** Asks TG for updates (infinite loop) and uses the provided callable
+     *
+     * @param callable $handler the handler. Pass a string to call the function with that name. Must accept a parameter for the update array
+     * @param int      $offset
+     * @param array    $allowed_updates optional, types of updates to fetch
+     * @param int      $timeout optional, long polling timeout
+     */
+    public function handle_updates(callable $handler, int $offset = 0, array $allowed_updates = [], int $timeout = 20)
+    {
+        $options = ['offset' => $offset, 'timeout' => $timeout];
+        if ($allowed_updates !== []) {
+            $options['allowed_updates'] = $allowed_updates;
+        }
+        while (true) {
+            $updates = $this->api->getUpdates($options);
+            foreach ($updates as $update) {
+                try {
+                    $handler($update);
+                    $options['offset'] = $update->update_id + 1;
+                } catch (Exception $exception) {
+
+                }
+            }
+        }
+    }
+
+    /**
+     * Downloads file from TG, returning the bytes or saving to $destination
+     *
+     * @param string          $file_id The file_id given by TG
+     * @param string|resource $destination Can be a path (string) or a stream resource. When unspecified, the function will return the data
+     * @return bool|string If $destination was set, returns whether the downloaded size matched the file_size given by TG, else returns the data
+     */
+    public function downloadFile(string $file_id, $destination = null)
+    {
+        $File = $this->api->getFile(['file_id' => $file_id]);
+        $file_path = "https://api.telegram.org/file/bot{$this->token}/{$File->file_path}";
+        if (\is_string($destination)) {
+            return file_put_contents($destination, $file_path) === $File->file_size;
+        }
+        $data = file_get_contents($file_path);
+        if (\is_resource($destination)) {
+            return fwrite($destination, $data) === $File->file_size;
+        }
+        return $data;
+    }
+
     /**
      * Send $text to $chat_id with optional extras such as reply_markup, see https://core.telegram.org/bots/api#sendmessage
+     *
      * @param        $chat_id
      * @param string $text
      * @param array  $extras Markdown is enabled by default
@@ -55,12 +106,12 @@ class PHPBot
      */
     public function sendMessage($chat_id, string $text, array $extras = []): stdClass
     {
-        //merges defaults with given params, if any
-        return $this->api->sendMessage(array_merge(['chat_id' => $chat_id, 'text' => $text], array_merge(['parse_mode' => 'markdown'], $extras)));
+        return $this->api->sendMessage(array_merge(['chat_id' => $chat_id, 'text' => $text], array_merge(['parse_mode' => $this->parse_mode], $extras)));
     }
 
     /**
      * Edits $msg_id from $chat_id to become $text, with optional $extras
+     *
      * @param        $chat_id
      * @param int    $msg_id
      * @param string $text
@@ -69,11 +120,12 @@ class PHPBot
      */
     public function editMessageText($chat_id, int $msg_id, string $text, array $extras = [])
     {
-        return $this->api->editMessageText(array_merge(['chat_id' => $chat_id, 'message_id' => $msg_id, 'text' => $text], $extras));
+        return $this->api->editMessageText(array_merge(['chat_id' => $chat_id, 'message_id' => $msg_id, 'text' => $text], array_merge(['parse_mode' => $this->parse_mode], $extras)));
     }
 
     /**
      * Edits only reply_markup of $msg_id from $chat_id
+     *
      * @param        $chat_id
      * @param int    $msg_id
      * @param array  $reply_markup The new reply_markup
@@ -83,8 +135,10 @@ class PHPBot
     {
         return $this->api->editMessageReplyMarkup(['chat_id' => $chat_id, 'message_id' => $msg_id, 'reply_markup' => $reply_markup]);
     }
+
     /**
      * Deletes $msg_id from $chat_id
+     *
      * @param     $chat_id
      * @param int $msg_id
      * @return bool
@@ -96,6 +150,7 @@ class PHPBot
 
     /**
      * Template function to edit/give $perms to $user_id in $chat_id
+     *
      * @param int   $user_id
      * @param       $chat_id
      * @param array $perms
@@ -116,6 +171,7 @@ class PHPBot
 
     /**
      * Promotes user to full admin by default
+     *
      * @param int   $user_id
      * @param       $chat_id
      * @param array $perms
@@ -123,7 +179,7 @@ class PHPBot
      */
     public function promoteUser(int $user_id, $chat_id, array $perms = []): bool
     {
-        if($perms === []){
+        if ($perms === []) {
             $perms = [
                 'can_change_info' => 1,
                 'can_delete_messages' => 1,
@@ -137,7 +193,8 @@ class PHPBot
     }
 
     /**
-     * Restricts user (forever) to be only able to read messages
+     * Restricts user (forever by default) to be only able to read messages
+     *
      * @param int $user_id
      * @param     $chat_id
      * @param int $until
@@ -152,8 +209,10 @@ class PHPBot
             'until_date' => $until
         ]);
     }
+
     /**
      * Gives {delete/pin messages, invite users} permissions to $user_id in $chat_id
+     *
      * @param int $user_id
      * @param     $chat_id
      * @return bool
@@ -171,6 +230,7 @@ class PHPBot
 
     /**
      * Removes all admin permissions of $user_id in $chat_id
+     *
      * @param int $user_id
      * @param     $chat_id
      * @return bool
@@ -184,19 +244,20 @@ class PHPBot
 
     /**
      * Checks what privileges the bot has inside $chat_id
+     *
      * @param $chat_id
      * @return stdClass
      */
     public function getPermissions($chat_id): stdClass
     {
-        try{
+        try {
             $api_reply = $this->api->getChatMember(['chat_id' => $chat_id, 'user_id' => $this->getBotID()]);
-        }catch(TelegramException $e){
+        } catch (TelegramException $e) {
             $api_reply = new stdClass();
             $api_reply->error_code = $e->getCode();
         }
-        if(property_exists($api_reply, 'error_code')){
-            switch($api_reply->error_code){
+        if (property_exists($api_reply, 'error_code')) {
+            switch ($api_reply->error_code) {
                 case 403: //forbidden
                     $api_reply->status = 'banned';
                     break;
@@ -205,7 +266,7 @@ class PHPBot
                     break;
             }
         }
-        if($api_reply->status !== 'administrator'){
+        if ($api_reply->status !== 'administrator') {
             $admin_perms = [
                 'can_change_info',
                 'can_delete_messages',
@@ -214,11 +275,11 @@ class PHPBot
                 'can_pin_messages',
                 'can_promote_members'
             ];
-            foreach($admin_perms as $perm){
+            foreach ($admin_perms as $perm) {
                 $api_reply->$perm = false;
             }
         }
-        if($api_reply->status !== 'restricted'){
+        if ($api_reply->status !== 'restricted') {
             $restricted_perms = [
                 'can_send_messages',
                 'can_send_media_messages',
@@ -226,7 +287,7 @@ class PHPBot
                 'can_add_web_page_previews'
             ];
             $in_group = !\in_array($api_reply->status, ['left', 'banned', 'invalid']); //false if the bot isn't in the chat
-            foreach($restricted_perms as $perm){
+            foreach ($restricted_perms as $perm) {
                 $api_reply->$perm = $in_group;
             }
         }
@@ -235,23 +296,24 @@ class PHPBot
 
     /**
      * Edits info of group, using any info given
+     *
      * @param       $chat_id
      * @param array $info At least one of {title, description, photo path} must be in this array
      * @return array
      */
     public function editInfo($chat_id, array $info): array
     {
-        if(\count($info) < 1){
+        if (\count($info) < 1) {
             return [null];
         }
         $results = [];
-        if(isset($info['title'])){
+        if (isset($info['title'])) {
             $results[] = $this->api->setChatTitle(['chat_id' => $chat_id, 'title' => $info['title']]);
         }
-        if(isset($info['description'])){
+        if (isset($info['description'])) {
             $results[] = $this->api->setChatDescription(['chat_id' => $chat_id, 'description' => $info['description']]);
         }
-        if(isset($info['photo']) && file_exists($info['photo'])){
+        if (isset($info['photo']) && file_exists($info['photo'])) {
             $data = [
                 'chat_id' => $chat_id,
                 'photo' => new CURLFile(realpath($info['photo']))
@@ -318,6 +380,7 @@ class PHPBot
 /**
  * Handles contacting Telegram on PHPBot's behalf
  * Class api
+ *
  * @package kyle2142
  */
 class api
@@ -326,7 +389,7 @@ class api
 
     public function __construct(string $token)
     {
-        if(preg_match('/^(\d+):[\w-]{30,}$/', $token, $matches) === 0){
+        if (preg_match('/^(\d+):[\w-]{30,}$/', $token, $matches) === 0) {
             throw new InvalidArgumentException('The supplied token does not look correct...');
         }
         $this->BOTID = (int)$matches[0];
@@ -344,6 +407,7 @@ class api
 
     /**
      * Template function to make API calls using method name and array of parameters
+     *
      * @param string $method The method name from https://core.telegram.org/bots/api
      * @param array  $params The arguments of the method, as an array
      * @return stdClass|bool
@@ -351,14 +415,14 @@ class api
      */
     public function __call(string $method, array $params)
     {
-        curl_setopt($this->curl, CURLOPT_URL, $this->api_url.$method);
+        curl_setopt($this->curl, CURLOPT_URL, $this->api_url . $method);
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params[0] ?? []);
         $result = curl_exec($this->curl);
-        if(curl_errno($this->curl)){
+        if (curl_errno($this->curl)) {
             throw new RuntimeException(curl_error($this->curl), curl_errno($this->curl));
         }
         $object = json_decode($result);
-        if(!$object->ok){
+        if (!$object->ok) {
             throw new TelegramException($object->description, $object->error_code);
         }
         return $object->result;
