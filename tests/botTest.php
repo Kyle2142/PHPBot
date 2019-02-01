@@ -100,6 +100,25 @@ final class botTest extends TestCase
         $this->assertTrue($thrown);
     }
 
+    public function testFlood() {
+        $thrown = false;
+        try {
+            $cmd = 'curl -sN -m 2 --connect-timeout 1 "https://api.telegram.org/bot' . config::TOKEN . '/sendmessage?chat_id=' . config::GROUP_NORMAL . '&text=blah&disable_notification=1"';
+            for ($i = 0; $i < 25; $i++) { //botAPI limits say <20 messages per minute (to groups). 25 is for good measure
+                if (substr(php_uname(), 0, 7) == "Windows") {
+                    pclose(popen("start /B $cmd", "r"));
+                } else {
+                    exec($cmd . " > /dev/null &");
+                }
+            }
+            //now that spam is done, we do a real request which should fail and hence trigger floodwait
+            $this->bot->sendMessage(config::GROUP_NORMAL, 'final blah'); // this should be rate limited after the above loop
+        } catch (\kyle2142\TelegramFloodWait $e) {
+            $thrown = true;
+        }
+        $this->assertTrue($thrown);
+    }
+
     public function testBadAccessing() {
         $thrown = false;
         try {
