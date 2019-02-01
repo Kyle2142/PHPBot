@@ -9,28 +9,25 @@ final class botTest extends TestCase
 {
     private $bot;
 
-    public function __construct(string $name = null, array $data = [], string $dataName = '')
-    {
+    public function __construct(string $name = null, array $data = [], string $dataName = '') {
         parent::__construct($name, $data, $dataName);
         $this->bot = new kyle2142\PHPBot(config::TOKEN);
     }
 
-    public function testGetChat()
-    {
+    public function testGetChat() {
         $result = $this->bot->api->getChat(['chat_id' => config::OWNER['id']]);
 
         $this->assertAttributeEquals(config::OWNER['id'], 'id', $result);
         $this->assertAttributeEquals(config::OWNER['first_name'], 'first_name', $result);
-        if(isset($result->last_name)){
+        if (isset($result->last_name)) {
             $this->assertAttributeEquals(config::OWNER['last_name'], 'last_name', $result);
         }
-        if(isset($result->username)){
+        if (isset($result->username)) {
             $this->assertAttributeEquals(config::OWNER['username'], 'username', $result);
         }
     }
 
-    public function testMessaging()
-    {
+    public function testMessaging() {
         $text = 'test';
         $edited = 'beep';
 
@@ -44,8 +41,7 @@ final class botTest extends TestCase
         $this->assertTrue($deleted);
     }
 
-    public function testPermissions()
-    {
+    public function testPermissions() {
         $has_all_admin =
             function ($perms) {
                 return $perms->can_change_info
@@ -94,23 +90,21 @@ final class botTest extends TestCase
         $this->assertTrue($has_all_normal($normal_group_perms));
     }
 
-    public function testException()
-    {
+    public function testException() {
         $thrown = false;
-        try{
+        try {
             $this->bot->sendMessage(config::GROUP_BANNED, 'this should fail');
-        }catch(\kyle2142\TelegramException $e){
+        } catch (\kyle2142\TelegramException $e) {
             $thrown = true;
         }
         $this->assertTrue($thrown);
     }
 
-    public function testBadAccessing()
-    {
+    public function testBadAccessing() {
         $thrown = false;
-        try{
-            $this->bot->api->getChatMember(['chat_id'=>config::GROUP_BANNED, 'user_id'=>$this->bot->getBotID()])->result;
-        }catch(\kyle2142\TelegramException $e){
+        try {
+            $this->bot->api->getChatMember(['chat_id' => config::GROUP_BANNED, 'user_id' => $this->bot->getBotID()])->result;
+        } catch (\kyle2142\TelegramException $e) {
             $thrown = true;
         }
         $this->assertTrue($thrown);
