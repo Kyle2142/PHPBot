@@ -308,7 +308,6 @@ class PHPBot
 
     /**
      * Takes a list of entities and restores markdown in $msg using botAPI format.
-     * Does NOT handle links!
      *
      * Example usage: get message, pass to this function and get back original message before sending,
      * so it can be resent.
@@ -317,31 +316,23 @@ class PHPBot
      * @param array $entities
      * @return string
      */
-    public function createMarkdownFromEntities(string $msg, array $entities): string
-    {
-        $inserted_chars = 0;
-        foreach ($entities as $e) { //entities may not overlap, so this will not edit the same part of a message twice
+    public static function createMarkdownFromEntities(string $msg, array $entities): string {
+        $dict = ['bold' => '*', 'italic' => '_', 'code' => '`', 'pre' => '```'];
+        foreach (array_reverse($entities) as $e) { //edit in reverse order to preserve offsets
             switch ($e->type) {
                 case 'bold':
-                    $char = '*';
-                    break;
                 case 'italic':
-                    $char = '_';
-                    break;
                 case 'code':
-                    $char = '`';
-                    break;
                 case 'pre':
-                    $char = '```';
+                    $msg = substr_replace($msg, $dict[$e->type], $e->offset + $e->length, 0);
+                    $msg = substr_replace($msg, $dict[$e->type], $e->offset, 0); //0 means "insert"
                     break;
-                default:
-                    $char = '';
-            } //sets $char based on entity
-            if ($char !== '') {
-                $msg = substr_replace($msg, $char, $inserted_chars + $e->offset, 0); //0 means "insert". Insert char at offset
-                $inserted_chars += \strlen($char);
-                $msg = substr_replace($msg, $char, $inserted_chars + $e->offset + $e->length, 0);
-                $inserted_chars += \strlen($char);
+                case 'text_mention':
+                    $e->url = 'tg://user?id=' . $e->user->id;
+                case 'text_link':
+                    $original = substr($msg, $e->offset, $e->length);
+                    $msg = substr_replace($msg, "[$original]({$e->url})", $e->offset, $e->length);
+                    break;
             }
         }
         return $msg;
