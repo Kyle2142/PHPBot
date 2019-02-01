@@ -390,7 +390,15 @@ class api
         }
         $object = json_decode($result);
         if (!$object->ok) {
-            throw new TelegramException($object->description, $object->error_code);
+            if (\property_exists($object, 'parameters')) {
+                if (\property_exists($object->parameters, 'retry_after')) {
+                    throw new TelegramFloodWait($object);
+                }
+                if (\property_exists($object->parameters, 'migrate_to_chat_id')) {
+                    throw new TelegramChatMigrated($object);
+                }
+            }
+            throw new TelegramException($object);
         }
         return $object->result;
     }
@@ -405,8 +413,46 @@ class api
 
 class TelegramException extends Exception
 {
-    public function __toString()
-    {
+    protected $result;
+
+    public function __construct(stdClass $result) {
+        $this->result = $result;
+        parent::__construct($result->description, $result->error_code);
+    }
+
+    public function __toString(): string {
         return "TelegramException: {$this->code} ({$this->message})\nTrace:\n{$this->getTraceAsString()}";
+    }
+
+    public function getResult(): stdClass {
+        return $this->result;
+    }
+}
+
+class TelegramFloodWait extends TelegramException
+{
+    protected $retry_after;
+
+    public function __construct(stdClass $result) {
+        $this->retry_after = $result->parameters->retry_after;
+        parent::__construct($result);
+    }
+
+    public function getRetryAfter(): int {
+        return $this->retry_after;
+    }
+}
+
+class TelegramChatMigrated extends TelegramException
+{
+    protected $migrate_to_chat_id;
+
+    public function __construct(stdClass $result) {
+        $this->migrate_to_chat_id = $result->parameters->migrate_to_chat_id;
+        parent::__construct($result);
+    }
+
+    public function getMigrateToChatId(): int {
+        return $this->migrate_to_chat_id;
     }
 }
