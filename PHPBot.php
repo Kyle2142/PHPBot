@@ -2,9 +2,8 @@
 
 namespace kyle2142;
 
-use InvalidArgumentException, LogicException, Exception,
-    stdClass, CURLFile;
-use RuntimeException;
+use InvalidArgumentException, LogicException, Exception, RuntimeException,
+    CURLFile, stdClass;
 
 /**
  * Class PHPBot
@@ -39,9 +38,8 @@ class PHPBot
             throw new LogicException('This function may only be called once per webhook call');
         }
         header_remove();
-        http_response_code(200);
+        header('Status: 200 OK', true, 200);
         header('Content-Type: application/json');
-        header('Status: 200 OK');
         $params['method'] = $method;
         echo json_encode($params);
         $this->webhook_reply_used = true;
@@ -377,6 +375,7 @@ class api
         $this->curl = curl_init();
         curl_setopt($this->curl, CURLOPT_HTTPHEADER, ['Content-Type:multipart/form-data']);
         curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($this->curl, CURLOPT_CONNECTTIMEOUT, 30);
     }
 
     public function __destruct() {
