@@ -21,8 +21,7 @@ class PHPBot
      *
      * @param string $token The botAPI token provided by t.me/Botfather
      */
-    public function __construct(string $token)
-    {
+    public function __construct(string $token) {
         $this->token = $token;
         $this->api = new api($token);
     }
@@ -32,11 +31,10 @@ class PHPBot
      * which is faster than using action() but can only be used once per webhook call, and cannot retrieve result
      *
      * @param string $method The Telegram botAPI method to call
-     * @param array  $params Array of parameters needed for the method
+     * @param array $params Array of parameters needed for the method
      * @throws LogicException Thrown when called more than once per instantiation
      */
-    public function quickAction($method, array $params = [])
-    {
+    public function quickAction($method, array $params = []) {
         if ($this->webhook_reply_used) {
             throw new LogicException('This function may only be called once per webhook call');
         }
@@ -52,12 +50,11 @@ class PHPBot
     /** Asks TG for updates (infinite loop) and uses the provided callable
      *
      * @param callable $handler the handler. Pass a string to call the function with that name. Must accept a parameter for the update array
-     * @param int      $offset
-     * @param array    $allowed_updates optional, types of updates to fetch
-     * @param int      $timeout optional, long polling timeout
+     * @param int $offset
+     * @param array $allowed_updates optional, types of updates to fetch
+     * @param int $timeout optional, long polling timeout
      */
-    public function handle_updates(callable $handler, int $offset = 0, array $allowed_updates = [], int $timeout = 20)
-    {
+    public function handle_updates(callable $handler, int $offset = 0, array $allowed_updates = [], int $timeout = 20) {
         $options = ['offset' => $offset, 'timeout' => $timeout];
         if ($allowed_updates !== []) {
             $options['allowed_updates'] = $allowed_updates;
@@ -78,12 +75,11 @@ class PHPBot
     /**
      * Downloads file from TG, returning the bytes or saving to $destination
      *
-     * @param string          $file_id The file_id given by TG
+     * @param string $file_id The file_id given by TG
      * @param string|resource $destination Can be a path (string) or a stream resource. When unspecified, the function will return the data
      * @return bool|string If $destination was set, returns whether the downloaded size matched the file_size given by TG, else returns the data
      */
-    public function downloadFile(string $file_id, $destination = null)
-    {
+    public function downloadFile(string $file_id, $destination = null) {
         $File = $this->api->getFile(['file_id' => $file_id]);
         $file_path = "https://api.telegram.org/file/bot{$this->token}/{$File->file_path}";
         if (\is_string($destination)) {
@@ -101,11 +97,10 @@ class PHPBot
      *
      * @param        $chat_id
      * @param string $text
-     * @param array  $extras Markdown is enabled by default
+     * @param array $extras Markdown is enabled by default
      * @return stdClass
      */
-    public function sendMessage($chat_id, string $text, array $extras = []): stdClass
-    {
+    public function sendMessage($chat_id, string $text, array $extras = []): stdClass {
         return $this->api->sendMessage(array_merge(['chat_id' => $chat_id, 'text' => $text], array_merge(['parse_mode' => $this->parse_mode], $extras)));
     }
 
@@ -113,13 +108,12 @@ class PHPBot
      * Edits $msg_id from $chat_id to become $text, with optional $extras
      *
      * @param        $chat_id
-     * @param int    $msg_id
+     * @param int $msg_id
      * @param string $text
-     * @param array  $extras see https://core.telegram.org/bots/api#editmessagetext
+     * @param array $extras see https://core.telegram.org/bots/api#editmessagetext
      * @return stdClass|bool
      */
-    public function editMessageText($chat_id, int $msg_id, string $text, array $extras = [])
-    {
+    public function editMessageText($chat_id, int $msg_id, string $text, array $extras = []) {
         return $this->api->editMessageText(array_merge(['chat_id' => $chat_id, 'message_id' => $msg_id, 'text' => $text], array_merge(['parse_mode' => $this->parse_mode], $extras)));
     }
 
@@ -127,12 +121,11 @@ class PHPBot
      * Edits only reply_markup of $msg_id from $chat_id
      *
      * @param        $chat_id
-     * @param int    $msg_id
-     * @param array  $reply_markup The new reply_markup
+     * @param int $msg_id
+     * @param array $reply_markup The new reply_markup
      * @return mixed
      */
-    public function editMarkup($chat_id, int $msg_id, array $reply_markup = [])
-    {
+    public function editMarkup($chat_id, int $msg_id, array $reply_markup = []) {
         return $this->api->editMessageReplyMarkup(['chat_id' => $chat_id, 'message_id' => $msg_id, 'reply_markup' => $reply_markup]);
     }
 
@@ -143,21 +136,19 @@ class PHPBot
      * @param int $msg_id
      * @return bool
      */
-    public function deleteMessage($chat_id, int $msg_id): bool
-    {
+    public function deleteMessage($chat_id, int $msg_id): bool {
         return $this->api->deleteMessage(['chat_id' => $chat_id, 'message_id' => $msg_id]);
     }
 
     /**
      * Template function to edit/give $perms to $user_id in $chat_id
      *
-     * @param int   $user_id
+     * @param int $user_id
      * @param       $chat_id
      * @param array $perms
      * @return bool
      */
-    public function editAdmin(int $user_id, $chat_id, array $perms = []): bool
-    {
+    public function editAdmin(int $user_id, $chat_id, array $perms = []): bool {
         return $this->api->promotechatmember(
             array_merge(
                 [
@@ -172,13 +163,12 @@ class PHPBot
     /**
      * Promotes user to full admin by default
      *
-     * @param int   $user_id
+     * @param int $user_id
      * @param       $chat_id
      * @param array $perms
      * @return bool
      */
-    public function promoteUser(int $user_id, $chat_id, array $perms = []): bool
-    {
+    public function promoteUser(int $user_id, $chat_id, array $perms = []): bool {
         if ($perms === []) {
             $perms = [
                 'can_change_info' => 1,
@@ -200,8 +190,7 @@ class PHPBot
      * @param int $until
      * @return bool
      */
-    public function muteUser(int $user_id, $chat_id, int $until = 0): bool
-    {
+    public function muteUser(int $user_id, $chat_id, int $until = 0): bool {
         return $this->api->restrictChatMember([
             'chat_id' => $chat_id,
             'user_id' => $user_id,
@@ -217,8 +206,7 @@ class PHPBot
      * @param     $chat_id
      * @return bool
      */
-    public function makeModerator(int $user_id, $chat_id): bool
-    {
+    public function makeModerator(int $user_id, $chat_id): bool {
         return $this->editAdmin($user_id, $chat_id,
             [
                 'can_delete_messages' => 1,
@@ -235,8 +223,7 @@ class PHPBot
      * @param     $chat_id
      * @return bool
      */
-    public function demote(int $user_id, $chat_id): bool
-    {
+    public function demote(int $user_id, $chat_id): bool {
         return $this->editAdmin($user_id, $chat_id); //no args means no perms
     }
 
@@ -248,8 +235,7 @@ class PHPBot
      * @param $chat_id
      * @return stdClass
      */
-    public function getPermissions($chat_id): stdClass
-    {
+    public function getPermissions($chat_id): stdClass {
         try {
             $api_reply = $this->api->getChatMember(['chat_id' => $chat_id, 'user_id' => $this->getBotID()]);
         } catch (TelegramException $e) {
@@ -301,8 +287,7 @@ class PHPBot
      * @param array $info At least one of {title, description, photo path} must be in this array
      * @return array
      */
-    public function editInfo($chat_id, array $info): array
-    {
+    public function editInfo($chat_id, array $info): array {
         if (\count($info) < 1) {
             return [null];
         }
@@ -331,7 +316,7 @@ class PHPBot
      * so it can be resent.
      *
      * @param string $msg
-     * @param array  $entities
+     * @param array $entities
      * @return string
      */
     public function createMarkdownFromEntities(string $msg, array $entities): string
@@ -367,8 +352,7 @@ class PHPBot
     /**
      * @return int
      */
-    public function getBotID(): int
-    {
+    public function getBotID(): int {
         return $this->api->getBotID();
     }
 }
@@ -383,8 +367,7 @@ class api
 {
     private $api_url, $BOTID, $curl;
 
-    public function __construct(string $token)
-    {
+    public function __construct(string $token) {
         if (preg_match('/^(\d+):[\w-]{30,}$/', $token, $matches) === 0) {
             throw new InvalidArgumentException('The supplied token does not look correct...');
         }
@@ -396,8 +379,7 @@ class api
         curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
     }
 
-    public function __destruct()
-    {
+    public function __destruct() {
         curl_close($this->curl);
     }
 
@@ -405,12 +387,11 @@ class api
      * Template function to make API calls using method name and array of parameters
      *
      * @param string $method The method name from https://core.telegram.org/bots/api
-     * @param array  $params The arguments of the method, as an array
+     * @param array $params The arguments of the method, as an array
      * @return stdClass|bool
      * @throws TelegramException, RuntimeException
      */
-    public function __call(string $method, array $params)
-    {
+    public function __call(string $method, array $params) {
         curl_setopt($this->curl, CURLOPT_URL, $this->api_url . $method);
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params[0] ?? []);
         $result = curl_exec($this->curl);
@@ -427,8 +408,7 @@ class api
     /**
      * @return int
      */
-    public function getBotID(): int
-    {
+    public function getBotID(): int {
         return $this->BOTID;
     }
 }
