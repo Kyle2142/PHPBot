@@ -141,7 +141,7 @@ $params = ['chat_id'=>343859930, 'from_chat_id' => $result->chat->id, 'message_i
 $bot->api->forwardMessage($params); //put params as variable due to line length
 ```
 #### Error
-In the case of an error, `kyle2142\TelegramException` will be thrown.
+In the case of an error, `kyle2142\TelegramException` (or one of its subclasses) will be thrown.
 
 As an example, let us try delete a message that does not exist:
 
@@ -164,6 +164,14 @@ try{
 
 Error code was 400
 Telegram says 'Bad Request: message to delete not found'
+```
+If your bot makes a lot of requests, you might run into `429` "FloodWait" errors, which will tell you how long until you can make that request again:
+```php
+try{
+    $bot->editMessage(343859930, 173, "beep");
+}catch(\kyle2142\TelegramFloodWait $exception){
+    echo "We need to wait {$exception->getRetryAfter()} seconds";
+}
 ```
 
 ## Have Questions?
