@@ -421,7 +421,7 @@ class TelegramException extends Exception
     }
 
     public function __toString(): string {
-        return "TelegramException: {$this->code} ({$this->message})\nTrace:\n{$this->getTraceAsString()}";
+        return get_class($this) . ": {$this->code} ({$this->message})\nTrace:\n{$this->getTraceAsString()}";
     }
 
     public function getResult(): stdClass {
