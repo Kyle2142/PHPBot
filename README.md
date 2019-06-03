@@ -195,7 +195,7 @@ To run tests, you need to rename/copy `tests/example-config.php` to `tests/confi
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
-## Acknowledgments <3
+## Acknowledgments
 
 * [Lonami](https://github.com/LonamiWebs) who inspired me to develop using Telegram
 * [Telegram](https://telegram.org) for the chat platform with an open API
