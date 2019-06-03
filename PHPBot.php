@@ -2,8 +2,13 @@
 
 namespace kyle2142;
 
+use function count;
+use function in_array;
 use InvalidArgumentException, LogicException, Exception, RuntimeException,
     CURLFile, stdClass;
+use function is_resource;
+use function is_string;
+use function property_exists;
 
 /**
  * Class PHPBot
@@ -80,11 +85,11 @@ class PHPBot
     public function downloadFile(string $file_id, $destination = null) {
         $File = $this->api->getFile(['file_id' => $file_id]);
         $file_path = "https://api.telegram.org/file/bot{$this->token}/{$File->file_path}";
-        if (\is_string($destination)) {
+        if (is_string($destination)) {
             return file_put_contents($destination, $file_path) === $File->file_size;
         }
         $data = file_get_contents($file_path);
-        if (\is_resource($destination)) {
+        if (is_resource($destination)) {
             return fwrite($destination, $data) === $File->file_size;
         }
         return $data;
@@ -270,7 +275,7 @@ class PHPBot
                 'can_send_other_messages',
                 'can_add_web_page_previews'
             ];
-            $in_group = !\in_array($api_reply->status, ['left', 'banned', 'invalid']); //false if the bot isn't in the chat
+            $in_group = !in_array($api_reply->status, ['left', 'banned', 'invalid']); //false if the bot isn't in the chat
             foreach ($restricted_perms as $perm) {
                 $api_reply->$perm = $in_group;
             }
@@ -286,7 +291,7 @@ class PHPBot
      * @return array
      */
     public function editInfo($chat_id, array $info): array {
-        if (\count($info) < 1) {
+        if (count($info) < 1) {
             return [null];
         }
         $results = [];
@@ -366,7 +371,7 @@ class api
         $this->curl = curl_init();
         curl_setopt($this->curl, CURLOPT_HTTPHEADER, ['Content-Type:multipart/form-data']);
         curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($this->curl, CURLOPT_CONNECTTIMEOUT, 30);
+        curl_setopt($this->curl, CURLOPT_CONNECTTIMEOUT, 62); // botAPI might take 60s before returning error
     }
 
     public function __destruct() {
@@ -390,11 +395,11 @@ class api
         }
         $object = json_decode($result);
         if (!$object->ok) {
-            if (\property_exists($object, 'parameters')) {
-                if (\property_exists($object->parameters, 'retry_after')) {
+            if (property_exists($object, 'parameters')) {
+                if (property_exists($object->parameters, 'retry_after')) {
                     throw new TelegramFloodWait($object);
                 }
-                if (\property_exists($object->parameters, 'migrate_to_chat_id')) {
+                if (property_exists($object->parameters, 'migrate_to_chat_id')) {
                     throw new TelegramChatMigrated($object);
                 }
             }
