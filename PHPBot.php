@@ -312,6 +312,21 @@ class PHPBot
     }
 
     /**
+     * Call $method with $params and not care about exceptions from cURL or bot API
+     * @param string $method
+     * @param array $params
+     */
+    public function fireAndForget(string $method, array $params) {
+        try {
+            $this->api->$method($params);
+        } catch (TelegramException $ignore) {
+
+        } catch (RuntimeException $ignore) {
+
+        }
+    }
+
+    /**
      * Takes a list of entities and restores markdown in $msg using botAPI format.
      *
      * Example usage: get message, pass to this function and get back original message before sending,
