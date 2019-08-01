@@ -312,18 +312,12 @@ class PHPBot
     }
 
     /**
-     * Call $method with $params and not care about exceptions from cURL or bot API
+     * Call $method with $params, 100ms timeout and not care about response/errors
      * @param string $method
      * @param array $params
      */
-    public function fireAndForget(string $method, array $params) {
-        try {
-            $this->api->$method($params);
-        } catch (TelegramException $ignore) {
-
-        } catch (RuntimeException $ignore) {
-
-        }
+    public function fireAndForget(string $method, array $params = []) {
+        $this->api->fireAndForget($method, $params);
     }
 
     /**
@@ -374,6 +368,7 @@ class PHPBot
  */
 class api
 {
+    const TIMEOUT = 62;
     private $api_url, $BOTID, $curl;
 
     public function __construct(string $token) {
@@ -386,7 +381,7 @@ class api
         $this->curl = curl_init();
         curl_setopt($this->curl, CURLOPT_HTTPHEADER, ['Content-Type:multipart/form-data']);
         curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($this->curl, CURLOPT_CONNECTTIMEOUT, 62); // botAPI might take 60s before returning error
+        curl_setopt($this->curl, CURLOPT_TIMEOUT, $this::TIMEOUT); // botAPI might take 60s before returning error
     }
 
     public function __destruct() {
@@ -428,6 +423,16 @@ class api
      */
     public function getBotID(): int {
         return $this->BOTID;
+    }
+
+    public function fireAndForget(string $method, array $params = []) {
+        curl_setopt($this->curl, CURLOPT_TIMEOUT_MS, 100);
+
+        curl_setopt($this->curl, CURLOPT_URL, $this->api_url . $method);
+        curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params);
+        curl_exec($this->curl);
+
+        curl_setopt($this->curl, CURLOPT_TIMEOUT, $this::TIMEOUT);
     }
 }
 
