@@ -369,14 +369,16 @@ class PHPBot
 class api
 {
     const TIMEOUT = 62;
-    private $api_url, $BOTID, $curl;
+    private $BOTID, $curl, $token;
+    public $api_host;
 
-    public function __construct(string $token) {
+    public function __construct(string $token, string $api_host = "https://api.telegram.org") {
         if (preg_match('/^(\d+):[\w-]{30,}$/', $token, $matches) === 0) {
             throw new InvalidArgumentException('The supplied token does not look correct...');
         }
         $this->BOTID = (int)$matches[0];
-        $this->api_url = "https://api.telegram.org/bot$token/";
+        $this->token = $token;
+        $this->api_host = $api_host;
 
         $this->curl = curl_init();
         curl_setopt($this->curl, CURLOPT_HTTPHEADER, ['Content-Type:multipart/form-data']);
@@ -397,7 +399,7 @@ class api
      * @throws TelegramException, RuntimeException
      */
     public function __call(string $method, array $params) {
-        curl_setopt($this->curl, CURLOPT_URL, $this->api_url . $method);
+        curl_setopt($this->curl, CURLOPT_URL, "{$this->api_host}/bot{$this->token}/$method");
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params[0] ?? []);
         $result = curl_exec($this->curl);
         if (curl_errno($this->curl)) {
@@ -428,7 +430,7 @@ class api
     public function fireAndForget(string $method, array $params = []) {
         curl_setopt($this->curl, CURLOPT_TIMEOUT_MS, 100);
 
-        curl_setopt($this->curl, CURLOPT_URL, $this->api_url . $method);
+        curl_setopt($this->curl, CURLOPT_URL, "{$this->api_host}/bot{$this->token}/$method");
         curl_setopt($this->curl, CURLOPT_POSTFIELDS, $params);
         curl_exec($this->curl);
 
